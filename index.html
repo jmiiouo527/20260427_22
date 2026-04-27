@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 면접 전문가 - JD 분석 및 예상 질문 생성</title>
+    
+    <!-- 폰트: Noto Sans KR -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+    
+    <!-- Tailwind CSS (CDN) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['"Noto Sans KR"', 'sans-serif'] },
+                    colors: {
+                        sky: {
+                            50: '#f0f9ff',
+                            100: '#e0f2fe',
+                            500: '#0ea5e9',
+                            600: '#0284c7',
+                            700: '#0369a1',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <!-- 아이콘: Lucide -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <style>
+        body { font-family: 'Noto Sans KR', sans-serif; background-color: #f0f9ff; }
+        /* 스크롤바 스타일링 */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb { background: #bae6fd; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #7dd3fc; }
+        /* 로딩 스피너 애니메이션 */
+        .spinner { animation: spin 1s linear infinite; }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4">
+
+    <!-- 메인 컨테이너 -->
+    <main class="bg-white rounded-2xl shadow-xl w-full max-w-lg p-8 relative overflow-hidden">
+        <!-- 상단 헤더 -->
+        <div class="text-center mb-8">
+            <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-sky-100 text-sky-600 mb-4">
+                <i data-lucide="bot" class="w-8 h-8"></i>
+            </div>
+            <h1 class="text-2xl font-bold text-gray-800">AI 면접 전문가</h1>
+            <p class="text-sm text-gray-500 mt-2">JD 분석 기반 핵심 키워드 및 예상 면접 질문 생성</p>
+        </div>
+
+        <!-- 입력 폼 -->
+        <form id="interviewForm" class="space-y-5">
+            <div>
+                <label for="company" class="block text-sm font-medium text-gray-700 mb-1">회사명</label>
+                <div class="relative">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <i data-lucide="building-2" class="w-5 h-5 text-gray-400"></i>
+                    </div>
+                    <input type="text" id="company" required placeholder="예: 네이버, 카카오" class="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none transition-all">
+                </div>
+            </div>
+
+            <div>
+                <label for="role" class="block text-sm font-medium text-gray-700 mb-1">지원 직무</label>
+                <div class="relative">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <i data-lucide="briefcase" class="w-5 h-5 text-gray-400"></i>
+                    </div>
+                    <input type="text" id="role" required placeholder="예: 프론트엔드 개발자" class="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none transition-all">
+                </div>
+            </div>
+
+            <div>
+                <label for="jdUrl" class="block text-sm font-medium text-gray-700 mb-1">채용공고(JD) URL</label>
+                <div class="relative">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <i data-lucide="link" class="w-5 h-5 text-gray-400"></i>
+                    </div>
+                    <input type="url" id="jdUrl" required placeholder="https://..." class="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none transition-all">
+                </div>
+            </div>
+
+            <button type="submit" class="w-full bg-sky-600 hover:bg-sky-700 text-white font-bold py-3 px-4 rounded-xl shadow-lg shadow-sky-200 transition-all flex justify-center items-center gap-2">
+                <i data-lucide="sparkles" class="w-5 h-5"></i>
+                예상 질문 생성 시작
+            </button>
+        </form>
+    </main>
+
+    <!-- 로딩 오버레이 -->
+    <div id="loadingOverlay" class="fixed inset-0 bg-white/80 backdrop-blur-sm hidden items-center justify-center z-40">
+        <div class="text-center flex flex-col items-center">
+            <i data-lucide="loader-2" class="w-12 h-12 text-sky-600 spinner mb-4"></i>
+            <h2 class="text-xl font-bold text-gray-800">JD를 분석하고 있습니다...</h2>
+            <p class="text-gray-500 mt-2 text-sm">AI가 이력서 스크리닝 매커니즘을 시뮬레이션 중입니다.</p>
+        </div>
+    </div>
+
+    <!-- 결과 모달 -->
+    <div id="resultModal" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50 p-4 opacity-0 transition-opacity duration-300">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col transform scale-95 transition-transform duration-300" id="modalContent">
+            
+            <!-- 모달 헤더 -->
+            <div class="flex justify-between items-center p-6 border-b border-gray-100 bg-sky-50 rounded-t-2xl">
+                <div class="flex items-center gap-3">
+                    <div class="bg-sky-600 p-2 rounded-lg text-white">
+                        <i data-lucide="award" class="w-6 h-6"></i>
+                    </div>
+                    <h2 class="text-xl font-bold text-gray-800">분석 결과 및 예상 질문</h2>
+                </div>
+                <button id="closeModalBtn" class="text-gray-400 hover:text-gray-600 transition-colors">
+                    <i data-lucide="x" class="w-6 h-6"></i>
+                </button>
+            </div>
+
+            <!-- 모달 콘텐츠 -->
+            <div class="p-6 overflow-y-auto flex-1 space-y-6">
+                <!-- 핵심 키워드 섹션 -->
+                <div>
+                    <h3 class="text-lg font-bold text-gray-800 mb-3 flex items-center gap-2">
+                        <i data-lucide="key" class="w-5 h-5 text-sky-500"></i>
+                        JD 도출 핵심 키워드
+                    </h3>
+                    <div id="keywordsContainer" class="flex flex-wrap gap-2">
+                        <!-- 키워드 배지가 여기에 생성됩니다 -->
+                    </div>
+                </div>
+
+                <!-- 예상 질문 섹션 -->
+                <div>
+                    <h3 class="text-lg font-bold text-gray-800 mb-3 flex items-center gap-2">
+                        <i data-lucide="message-square" class="w-5 h-5 text-sky-500"></i>
+                        채용 전문가 관점 면접 질문 10선
+                    </h3>
+                    <ul id="questionsList" class="space-y-3">
+                        <!-- 질문 리스트가 여기에 생성됩니다 -->
+                    </ul>
+                </div>
+            </div>
+
+            <!-- 모달 푸터 -->
+            <div class="p-4 border-t border-gray-100 flex justify-end bg-gray-50 rounded-b-2xl">
+                <button id="closeModalFooterBtn" class="px-5 py-2.5 bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium rounded-lg transition-colors">
+                    확인
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 앱 로직 -->
+    <script>
+        // Lucide 아이콘 초기화
+        lucide.createIcons();
+
+        // [중요] Google Apps Script로 배포한 Web App URL을 여기에 입력하세요.
+        const GAS_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbzFHIdjr59e_0QBphSjnwE2NJiKYg-qHSNxnyjMxbFNAkULKRIF13fQHXFI1qVRw978/exec'; 
+        // 주의: 위 URL은 예시이므로 반드시 실제 배포된 본인의 URL로 교체해야 합니다.
+
+        // DOM 요소
+        const form = document.getElementById('interviewForm');
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        const resultModal = document.getElementById('resultModal');
+        const modalContent = document.getElementById('modalContent');
+        const keywordsContainer = document.getElementById('keywordsContainer');
+        const questionsList = document.getElementById('questionsList');
+        const closeModalBtn = document.getElementById('closeModalBtn');
+        const closeModalFooterBtn = document.getElementById('closeModalFooterBtn');
+
+        // 폼 제출 이벤트
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const company = document.getElementById('company').value;
+            const role = document.getElementById('role').value;
+            const jdUrl = document.getElementById('jdUrl').value;
+
+            // 로딩 표시
+            loadingOverlay.classList.remove('hidden');
+            loadingOverlay.classList.add('flex');
+
+            try {
+                // 백엔드(GAS)로 데이터 전송
+                // CORS preflight를 피하기 위해 Content-Type을 text/plain으로 설정하고 JSON 문자열 전송
+                const response = await fetch(GAS_WEB_APP_URL, {
+                    method: 'POST',
+                    body: JSON.stringify({ company, role, jdUrl }),
+                    headers: {
+                        'Content-Type': 'text/plain;charset=utf-8' 
+                    }
+                });
+
+                if (!response.ok) throw new Error('네트워크 응답이 실패했습니다.');
+
+                const result = await response.json();
+
+                if (result.success) {
+                    renderResults(result.data.keywords, result.data.questions);
+                    showModal();
+                } else {
+                    throw new Error(result.error || '알 수 없는 에러가 발생했습니다.');
+                }
+            } catch (error) {
+                alert('처리 중 오류가 발생했습니다.\n\n에러 내용: ' + error.message);
+            } finally {
+                // 로딩 숨김
+                loadingOverlay.classList.add('hidden');
+                loadingOverlay.classList.remove('flex');
+            }
+        });
+
+        // 결과 렌더링 함수
+        function renderResults(keywords, questions) {
+            // 키워드 렌더링
+            keywordsContainer.innerHTML = '';
+            keywords.forEach(keyword => {
+                const badge = document.createElement('span');
+                badge.className = 'px-3 py-1.5 bg-sky-100 text-sky-700 rounded-full text-sm font-semibold border border-sky-200';
+                badge.textContent = '# ' + keyword;
+                keywordsContainer.appendChild(badge);
+            });
+
+            // 질문 렌더링
+            questionsList.innerHTML = '';
+            questions.forEach((q, index) => {
+                const li = document.createElement('li');
+                li.className = 'p-4 bg-gray-50 rounded-xl border border-gray-200 text-gray-700 leading-relaxed flex gap-3';
+                
+                const numberBadge = document.createElement('span');
+                numberBadge.className = 'min-w-[24px] h-6 flex items-center justify-center bg-sky-600 text-white rounded-full text-xs font-bold shrink-0 mt-0.5';
+                numberBadge.textContent = index + 1;
+
+                const textSpan = document.createElement('span');
+                textSpan.textContent = q;
+
+                li.appendChild(numberBadge);
+                li.appendChild(textSpan);
+                questionsList.appendChild(li);
+            });
+        }
+
+        // 모달 제어 함수
+        function showModal() {
+            resultModal.classList.remove('hidden');
+            resultModal.classList.add('flex');
+            // 애니메이션을 위해 약간의 지연
+            setTimeout(() => {
+                resultModal.classList.remove('opacity-0');
+                modalContent.classList.remove('scale-95');
+            }, 10);
+        }
+
+        function hideModal() {
+            resultModal.classList.add('opacity-0');
+            modalContent.classList.add('scale-95');
+            setTimeout(() => {
+                resultModal.classList.add('hidden');
+                resultModal.classList.remove('flex');
+            }, 300);
+        }
+
+        closeModalBtn.addEventListener('click', hideModal);
+        closeModalFooterBtn.addEventListener('click', hideModal);
+        resultModal.addEventListener('click', (e) => {
+            if (e.target === resultModal) hideModal();
+        });
+    </script>
+</body>
+</html>
